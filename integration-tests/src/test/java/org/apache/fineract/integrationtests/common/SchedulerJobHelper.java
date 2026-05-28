@@ -44,7 +44,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.apache.fineract.client.models.GetJobsResponse;
-import org.apache.fineract.client.models.PutJobsJobIDRequest;
+import org.apache.fineract.client.models.JobUpdateRequest;
 import org.apache.fineract.client.util.Calls;
 import org.apache.fineract.infrastructure.businessdate.domain.BusinessDateType;
 import org.apache.fineract.infrastructure.core.service.DateUtils;
@@ -147,8 +147,8 @@ public class SchedulerJobHelper {
         return response;
     }
 
-    public void updateSchedulerJob(long jobId, PutJobsJobIDRequest request) {
-        Calls.ok(FineractClientHelper.getFineractClient().jobs.updateJobDetail(jobId, request));
+    public void updateSchedulerJob(JobUpdateRequest request) {
+        Calls.ok(FineractClientHelper.getFineractClient().jobs.updateJobDetail(request.getJobId(), request));
     }
 
     // TODO: Rewrite to use fineract-client instead!

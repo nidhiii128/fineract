@@ -49,6 +49,7 @@ import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.fineract.command.core.CommandDispatcher;
 import org.apache.fineract.commands.domain.CommandWrapper;
 import org.apache.fineract.commands.service.CommandWrapperBuilder;
 import org.apache.fineract.commands.service.PortfolioCommandSourceWritePlatformService;
@@ -62,8 +63,11 @@ import org.apache.fineract.infrastructure.core.serialization.ApiRequestJsonSeria
 import org.apache.fineract.infrastructure.core.serialization.ToApiJsonSerializer;
 import org.apache.fineract.infrastructure.core.service.Page;
 import org.apache.fineract.infrastructure.core.service.SearchParameters;
+import org.apache.fineract.infrastructure.jobs.command.JobUpdateCommand;
 import org.apache.fineract.infrastructure.jobs.data.JobDetailData;
 import org.apache.fineract.infrastructure.jobs.data.JobDetailHistoryData;
+import org.apache.fineract.infrastructure.jobs.data.JobUpdateRequest;
+import org.apache.fineract.infrastructure.jobs.data.JobUpdateResponse;
 import org.apache.fineract.infrastructure.jobs.service.JobRegisterService;
 import org.apache.fineract.infrastructure.jobs.service.SchedulerJobRunnerReadService;
 import org.apache.fineract.infrastructure.security.exception.NoAuthorizationException;
@@ -87,6 +91,7 @@ public class SchedulerJobApiResource {
     private final PlatformSecurityContext context;
     private final FineractProperties fineractProperties;
     private final SqlValidator sqlValidator;
+    private final CommandDispatcher dispatcher;
 
     @GET
     @Operation(summary = "Retrieve Scheduler Jobs", operationId = "retrieveAllSchedulerJobs", description = "Returns the list of jobs.\n"
@@ -173,14 +178,14 @@ public class SchedulerJobApiResource {
     }
 
     @PUT
-    @Path("{" + SchedulerJobApiConstants.JOB_ID + "}")
-    @Consumes({ MediaType.APPLICATION_JSON })
+    @Path("{jobId}")
+    @Consumes(MediaType.APPLICATION_JSON)
     @Operation(summary = "Update a Job", description = "Updates the details of a job.")
-    @RequestBody(required = true, content = @Content(schema = @Schema(implementation = SchedulerJobApiResourceSwagger.PutJobsJobIDRequest.class)))
-    @ApiResponse(responseCode = "200", description = "OK")
-    public String updateJobDetail(@PathParam(SchedulerJobApiConstants.JOB_ID) @Parameter(description = "jobId") final Long jobId,
-            @Parameter(hidden = true) final String jsonRequestBody) {
-        return updateJobDetail(IdTypeResolver.resolveDefault(), Objects.toString(jobId, null), jsonRequestBody);
+    public JobUpdateResponse updateJobDetail(@PathParam("jobId") Long jobId, JobUpdateRequest request) {
+        request.setJobId(jobId);
+        var command = new JobUpdateCommand();
+        command.setPayload(request);
+        return dispatcher.<JobUpdateRequest, JobUpdateResponse>dispatch(command).get();
     }
 
     @PUT
