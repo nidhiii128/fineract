@@ -21,7 +21,6 @@ package org.apache.fineract.infrastructure.jobs.service;
 import io.github.resilience4j.retry.annotation.Retry;
 import java.util.Date;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
@@ -39,7 +38,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class SchedularWritePlatformServiceJpaRepositoryImpl implements SchedularWritePlatformService {
+public class SchedulerWritePlatformServiceJpaRepositoryImpl implements SchedulerWritePlatformService {
 
     private final ScheduledJobDetailRepository scheduledJobDetailsRepository;
 
@@ -47,15 +46,7 @@ public class SchedularWritePlatformServiceJpaRepositoryImpl implements Schedular
 
     private final SchedulerDetailRepository schedulerDetailRepository;
 
-    @Override
-    public List<ScheduledJobDetail> retrieveAllJobs(final String nodeId) {
-        return this.scheduledJobDetailsRepository.findAllJobs(Integer.parseInt(nodeId));
-    }
-
-    @Override
-    public ScheduledJobDetail findByJobKey(final String jobKey) {
-        return this.scheduledJobDetailsRepository.findByJobKey(jobKey);
-    }
+    private final ScheduledJobReadService scheduledJobReadService;
 
     @Transactional
     @Override
@@ -71,38 +62,15 @@ public class SchedularWritePlatformServiceJpaRepositoryImpl implements Schedular
     }
 
     @Override
-    public Long fetchMaxVersionBy(final String jobKey) {
-        Long version = 0L;
-        final Long versionFromDB = this.scheduledJobRunHistoryRepository.findMaxVersionByJobKey(jobKey);
-        if (versionFromDB != null) {
-            version = versionFromDB;
-        }
-        return version;
-    }
-
-    private ScheduledJobDetail findByJobId(final Long jobId) {
-        return this.scheduledJobDetailsRepository.findByJobId(jobId);
-    }
-
-    @Override
     @Transactional
     public void updateSchedulerDetail(final SchedulerDetail schedulerDetail) {
         this.schedulerDetailRepository.save(schedulerDetail);
     }
 
-    public SchedulerDetail retriveSchedulerDetail() {
-        SchedulerDetail schedulerDetail = null;
-        final List<SchedulerDetail> schedulerDetailList = this.schedulerDetailRepository.findAll();
-        if (schedulerDetailList != null) {
-            schedulerDetail = schedulerDetailList.get(0);
-        }
-        return schedulerDetail;
-    }
-
     @Transactional
     @Override
     public JobUpdateResponse updateJobDetail(JobUpdateRequest request) {
-        ScheduledJobDetail job = findByJobId(request.getJobId());
+        ScheduledJobDetail job = scheduledJobDetailsRepository.findByJobId(request.getJobId());
         if (job == null) {
             throw new JobNotFoundException(String.valueOf(request.getJobId()));
         }
@@ -139,7 +107,7 @@ public class SchedularWritePlatformServiceJpaRepositoryImpl implements Schedular
                 && scheduledJobDetail.getNextRunTime().after(new Date()))) {
             isStopExecution = true;
         }
-        final SchedulerDetail schedulerDetail = retriveSchedulerDetail();
+        final SchedulerDetail schedulerDetail = scheduledJobReadService.retrieveSchedulerDetail();
         if (triggerType.equals(SchedulerServiceConstants.TRIGGER_TYPE_CRON) && schedulerDetail.isSuspended()) {
             scheduledJobDetail.setTriggerMisfired(true);
             isStopExecution = true;
